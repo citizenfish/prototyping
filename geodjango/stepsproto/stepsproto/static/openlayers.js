@@ -1,0 +1,1 @@
+console.log("Openlayers.js is loaded")
