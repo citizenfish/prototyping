@@ -1,0 +1,11 @@
+
+<html>
+<body>
+<p>Help</p>
+<p>{{ help.summarytext|safe }}</p>
+
+{% for item in helpitems %}
+{{item.linktext}}
+{% endfor %}
+</body>
+</html>

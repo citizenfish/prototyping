@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+{{ geojson|json_script:"geojson"}}
+
+
+<link rel="stylesheet" type="text/css" href="{% static 'stepstyle.css' %}" />
+
+<div class="homebanner">
+    <div class="container">
+        <div class = "row">
+            <div class = "col-md-6">
+                 <h1>{{ route.name }}</h1>
+                 <p> {{ route.text|safe }}</p>
+            </div>
+            <div class = "col-md-6">
+                <div id='map' class="routemap"></div>
+                {% include 'mapbox.html' %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+{% endblock %}

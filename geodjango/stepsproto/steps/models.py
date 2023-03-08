@@ -7,7 +7,7 @@ class Step(models.Model):
     name = models.CharField('Name of steps', max_length=200)
     text = models.TextField('Description')
     location = models.PointField()
-    audio = models.FileField(default='') # <audio src="{{ song.file.url }}" controls></audio> in template
+    audio = models.FileField(default='', null=True, blank=True) # <audio src="{{ song.file.url }}" controls></audio> in template
 
     class Meta:
         ordering = ['name']

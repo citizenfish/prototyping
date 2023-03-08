@@ -1,0 +1,43 @@
+{% load static %}
+
+<script src='https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js'></script>
+<link href='https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css' rel='stylesheet'/>
+
+<script>
+    let options = {
+        container: 'map',
+        style: "{% static '/mapbox/styles.json' %}",
+        maxZoom: 20,
+        minZoom: 0,
+        pitch: 30,
+        center: [{{default_map_lon}}, {{default_map_lat}}],
+        zoom: 15
+    }
+    const map = new maplibregl.Map(options);
+    map.on('load', function () {
+        map.loadImage(
+            "{% static 'map_images/map_sailor.png' %}",
+            (error, image) => {
+                if (error) throw error;
+                map.addImage('sailor', image);
+            });
+        map.addSource('data', {
+            type: 'geojson',
+            data: JSON.parse(document.getElementById('geojson').textContent)
+        });
+        map.addLayer({
+            id: 'data',
+            type: 'symbol',
+            source: 'data',
+            layout: {
+                'icon-image': 'sailor', // Set the icon image
+                'icon-size': 1, // Set the icon size
+                'icon-allow-overlap': true // Allow icons to overlap
+            },
+            paint: {
+                'icon-opacity': 1 // Set the opacity of the icons
+            }
+        });
+
+    });
+</script>

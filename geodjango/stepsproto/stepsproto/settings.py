@@ -23,6 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Create these in root
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
@@ -33,9 +34,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 DEFAULT_MAP_LON = -3.5144813
 DEFAULT_MAP_LAT = 50.395964
 DEFAULT_MAP_ZOOM = 17
-
-
-
 
 
 # Quick-start development settings - unsuitable for production
@@ -62,7 +60,9 @@ INSTALLED_APPS = [
 
     ## Added by Dave
     'django.contrib.gis',
-    'steps'
+    'steps',
+    'ckeditor',
+    'siteartifacts'
 ]
 
 MIDDLEWARE = [
@@ -80,7 +80,8 @@ ROOT_URLCONF = 'stepsproto.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        ## Added by Dave
+        'DIRS': ['stepsproto/templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -88,6 +89,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                ## Added by Dave for global variables
+                'stepsproto.context.globalcontext.site_settings'
             ],
         },
     },

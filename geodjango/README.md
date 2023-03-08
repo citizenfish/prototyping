@@ -62,6 +62,25 @@ python manage.py runserver
 - makemigrations
 - migrate
 
+## siteartifacts app
+
+Idea here is to have a single app with editable site artifacts, specifically
+
+- about
+- contact us
+- help
+- privacy policy
+
+```bash
+
+python manage.py startapp siteartifacts
+pip install django-ckeditor #for rich text editing
+```
+
+Add siteartifacts, ckeditor to INSTALLED_APPS
+
+## Contact Us
+
 
 
 

@@ -1,0 +1,11 @@
+.homebanner {
+    padding-top: 48px;
+    padding-bottom:48px;
+    margin-bottom: 20px;
+    background-color: #eee;
+
+}
+
+.homebanner p {
+    font-weight: 200;
+}

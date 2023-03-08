@@ -1,0 +1,15 @@
+.routeindex {
+ max-height:350px;
+}
+
+.routeindextext {
+    max-height: 260px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    margin-bottom: 10px
+}
+
+.routemap {
+    width: 100%;
+    height: 350px;
+}
