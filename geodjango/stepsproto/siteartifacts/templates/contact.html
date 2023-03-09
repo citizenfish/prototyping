@@ -1,3 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
 <form action="/site/contact" method="POST">
 
 {% csrf_token %}
@@ -7,3 +9,4 @@
 </table>
 <button type="submit">SUBMIT</button>
 </form>
+{% endblock %}

@@ -4,7 +4,6 @@
 {% block content %}
 {{ geojson|json_script:"geojson"}}
 
-
 <link rel="stylesheet" type="text/css" href="{% static 'stepstyle.css' %}" />
 
 <div class="homebanner">
@@ -13,14 +12,49 @@
             <div class = "col-md-6">
                  <h1>{{ route.name }}</h1>
                  <p> {{ route.text|safe }}</p>
+                 <p>Route start: <b>{{route.startname}}</b></p>
+                 <p>Route end:   <b>{{route.endname}}</b></p>
             </div>
             <div class = "col-md-6">
                 <div id='map' class="routemap"></div>
                 {% include 'mapbox.html' %}
             </div>
         </div>
-
     </div>
+
+</div>
+<div class="container routeinstructions legend">
+    <h2>Route Instructions</h2>
+    {% for instruction in instructions|dictsort:"id" %}
+    <div class="row align-items-center" id="{{instruction.id}}_ins">
+        <div class="col-md-3" >
+            {{instruction.locationname}}
+        </div>
+        <div class="col-md-8">
+            {{instruction.instruction|safe}}
+        </div>
+        <div class="col-md-1">
+            <button onClick="document.getElementById('{{instruction.id}}_ins').style.display='none'" class="btn btn-success">Done</button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="container routesteps legend">
+<h2>The Steps</h2>
+    {% for step in steps %}
+     <div class="row align-items-center" id="{{step.id}}_ins">
+        <div class="col-md-3" >
+            {{step.name}}
+        </div>
+        <div class="col-md-8">
+            {{step.text|safe}}
+        </div>
+        <div class="col-md-1">
+            <a href="/steps/step/{{ step.id }}">Details</a>
+        </div>
+    </div>
+    {% endfor %}
 </div>
 
 

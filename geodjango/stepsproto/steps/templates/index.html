@@ -4,15 +4,24 @@
 {% block content %}
 {% include 'indexcontent.html' %}
 <link rel="stylesheet" type="text/css" href="{% static 'stepstyle.css' %}" />
-<div class="container">
+<div class="container routescontainer">
     <div class="row">
-        {% for route in routes %}
-        <div class="col-md-4 routeindex">
-            <h2>{{ route.name }}</h2>
-            <div class="routeindextext"><p>{{ route.text }}</p></div>
-            <a class = "btn btn-primary btn-sm" href="/steps/route/{{route.id}}">Go to route {{route.id}}</a>
+        {% for route in routes|dictsort:"id" %}
+        <div class="col-md-4">
+            <div class="row routeindex">
+                <div class ="col-md-12 align-self-center">
+                    <h2>{{ route.name }}</h2>
+                </div>
+                <div class="routeindextext">
+                    <p>{{ route.text }}</p>
+                </div>
+                <div class="col-md-12">
+                    <a class = "btn btn-primary btn-sm" href="/steps/route/{{route.id}}">> {{route.name}}</a>
+                </div>
+            </div>
         </div>
         {% endfor %}
     </div>
 </div>
+
 {% endblock %}

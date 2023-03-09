@@ -93,7 +93,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 ## Added by Dave for global variables
-                'stepsproto.context.globalcontext.site_settings'
+                'siteartifacts.context.globalcontext.site_settings'
             ],
         },
     },

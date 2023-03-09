@@ -1,15 +1,47 @@
 .routeindex {
- max-height:350px;
+    height:300px;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-bottom: 10px;
 }
 
 .routeindextext {
-    max-height: 260px;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    margin-bottom: 10px
+    height: 180px;
+    max-width:300px;
+    overflow:hidden;
+}
+
+.routescontainer {
+    margin-top: 20px;
+    margin-bottom: 150px
 }
 
 .routemap {
     width: 100%;
     height: 350px;
+}
+
+.routeinstructions {
+    margin-top: 20px;
+    margin-bottom: 50px;
+}
+
+.legend .row:nth-of-type(odd) {
+background-color:#eee;
+}
+.legend .row:nth-of-type(even) {
+background: #FFFFFF;
+}
+
+
+.stepmap {
+    width: 100%;
+    height: 500px;
+}
+
+.stepcontainer {
+    margin-top: 20px;
+    height: 500px;
 }

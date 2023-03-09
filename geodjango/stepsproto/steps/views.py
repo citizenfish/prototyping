@@ -4,7 +4,7 @@ from django.core.serializers import serialize
 from django.views.generic.base import TemplateView
 
 from siteartifacts.models import IndexPage
-from steps.models import Step, Route
+from steps.models import Step,StepImage, Route, RouteInstruction
 
 class IndexView(TemplateView):
     template_name = 'index.html'
@@ -15,11 +15,16 @@ class IndexView(TemplateView):
         return context
 
 class StepsMapView(TemplateView):
-    template_name = "map.html"
+    template_name = "step.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['steps'] = json.loads(serialize("geojson", Step.objects.all()))
+        step = Step.objects.get(pk=kwargs.get('pk'))
+        context['geojson'] = json.loads(serialize("geojson", [step], geometry_field='location', fields=('name',)))
+        context['step'] = step
+
+        # Now get related images
+        context['stepimages'] = StepImage.objects.filter(step=kwargs.get('pk'))
         return context
 
 class RoutesView(TemplateView):
@@ -33,4 +38,6 @@ class RoutesView(TemplateView):
         steps = route.steps.all()
         context['geojson'] = json.loads(serialize("geojson", steps, geometry_field='location', fields=('name',)))
         context['steps'] = steps
+        context['instructions'] = RouteInstruction.objects.filter(route=kwargs.get('pk'))
+
         return context

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+{{ geojson|json_script:"geojson"}}
+<link rel="stylesheet" type="text/css" href="{% static 'stepstyle.css' %}" />
+<h1>{{step.name}}</h1>
+<div class="container stepcontainer">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="carousel slide" id="stepslider" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                {% for img in stepimages %}
+                    <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                        <img src="{{img.image.url}}" class="d-block w-100"/>
+                    </div>
+                {% endfor %}
+                </div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#stepslider" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Previous</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#stepslider" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Next</span>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div id='map' class="stepmap"></div>
+                {% include 'mapbox.html' %}
+        </div>
+    </div>
+</div>
+
+<p>{{step.text|safe}}</p>
+{% endblock %}

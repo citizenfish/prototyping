@@ -15,7 +15,7 @@ class Step(models.Model):
 
 class Route(models.Model):
     name = models.CharField('Name of route', max_length=50)
-    text = models.TextField('Route Description')
+    text = RichTextField('Route Description')
     steps = models.ManyToManyField(Step)
     startpoint = models.PointField('Route Start')
     endpoint = models.PointField('Route End')
