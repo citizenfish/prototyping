@@ -79,8 +79,13 @@ pip install django-ckeditor #for rich text editing
 
 Add siteartifacts, ckeditor to INSTALLED_APPS
 
-## Contact Us
+## Ordered model
 
+```bash
+pip install django-ordered-model
+```
+
+Add ordered_model.models to SETTINGS.INSTALLED_APPS
 
 
 

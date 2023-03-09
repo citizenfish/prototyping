@@ -58,10 +58,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    ## Added by Dave
+    ## django added by Dave
     'django.contrib.gis',
-    'steps',
+    'ordered_model',
     'ckeditor',
+
+    ## Apps created
+    'steps',
     'siteartifacts'
 ]
 
