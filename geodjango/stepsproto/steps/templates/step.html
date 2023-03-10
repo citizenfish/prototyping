@@ -3,6 +3,7 @@
 {% block content %}
 {{ geojson|json_script:"geojson"}}
 <link rel="stylesheet" type="text/css" href="{% static 'stepstyle.css' %}" />
+
 <h1>{{step.name}}</h1>
 <div class="container stepcontainer">
     <div class="row">
@@ -27,10 +28,12 @@
         </div>
         <div class="col-md-6">
             <div id='map' class="stepmap"></div>
+            <button class="map-reset-button" onClick="zoomToExtent()">Reset</button>
                 {% include 'mapbox.html' %}
         </div>
     </div>
 </div>
 
 <p>{{step.text|safe}}</p>
+
 {% endblock %}

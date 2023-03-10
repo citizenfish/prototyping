@@ -21,11 +21,16 @@
 .routemap {
     width: 100%;
     height: 350px;
+    z-index: 1;
 }
 
 .routeinstructions {
     margin-top: 20px;
     margin-bottom: 50px;
+}
+
+.routesteps {
+    margin-bottom: 150px;
 }
 
 .legend .row:nth-of-type(odd) {
@@ -35,13 +40,24 @@ background-color:#eee;
 background: #FFFFFF;
 }
 
-
 .stepmap {
     width: 100%;
-    height: 500px;
+    height: 350px;
+    z-index: 1;
 }
 
 .stepcontainer {
     margin-top: 20px;
     height: 500px;
+}
+
+#stepslider {
+    height: 350px;
+    overflow: hidden;
+}
+.map-reset-button {
+    position: relative;
+    bottom: 35px;
+    left: 10px;
+    z-index: 20
 }

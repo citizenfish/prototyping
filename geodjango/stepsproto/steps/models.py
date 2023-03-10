@@ -7,7 +7,7 @@ class Step(models.Model):
     text = RichTextField('Description')
     location = models.PointField()
     audio = models.FileField(default='', null=True, blank=True) # <audio src="{{ song.file.url }}" controls></audio> in template
-
+    icon = models.CharField('Icon', default='step', max_length=20)
     class Meta:
         ordering = ['name']
     def __str__(self):
@@ -21,6 +21,7 @@ class Route(models.Model):
     endpoint = models.PointField('Route End')
     startname = models.CharField("Route Start", max_length=50)
     endname = models.CharField('Route End', max_length=50)
+    icon = models.CharField('Icon', default='route', max_length=20)
 
     class Meta:
         ordering = ['name']
@@ -33,7 +34,7 @@ class RouteInstruction(OrderedModel):
     location = models.PointField(null=True,blank=True)
     route = models.ForeignKey(Route, on_delete=models.CASCADE)
     order_with_respect_to = "route" # critical for arrows to work in admin
-
+    icon = models.CharField('Icon', default='direction', max_length=20)
     def __str__(self):
         return self.locationname
 

@@ -2,8 +2,19 @@
 
 <script src='https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js'></script>
 <link href='https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css' rel='stylesheet'/>
+<script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+
+<style>
+.maplibregl-popup {
+max-width: 400px;
+font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+}
+</style>
 
 <script>
+    let geojson = JSON.parse(document.getElementById('geojson').textContent);
+    console.log(geojson); //TODO remove
+
     let options = {
         container: 'map',
         style: "{% static '/mapbox/styles.json' %}",
@@ -15,22 +26,54 @@
     }
     const map = new maplibregl.Map(options);
     map.on('load', function () {
+        //TODO better way to do this for multiples
+
         map.loadImage(
-            "{% static 'map_images/map_sailor.png' %}",
+            "{% static 'map_images/step.png' %}",
             (error, image) => {
                 if (error) throw error;
-                map.addImage('sailor', image);
+                map.addImage('step', image);
             });
+
+        map.loadImage(
+            "{% static 'map_images/route.png' %}",
+            (error, image) => {
+                if (error) throw error;
+                map.addImage('route', image);
+            });
+
+        map.loadImage(
+            "{% static 'map_images/direction.png' %}",
+            (error, image) => {
+                if (error) throw error;
+                map.addImage('direction', image);
+            });
+
+        map.loadImage(
+            "{% static 'map_images/start.png' %}",
+            (error, image) => {
+                if (error) throw error;
+                map.addImage('start', image);
+            });
+
+        map.loadImage(
+            "{% static 'map_images/end.png' %}",
+            (error, image) => {
+                if (error) throw error;
+                map.addImage('end', image);
+            });
+
         map.addSource('data', {
             type: 'geojson',
-            data: JSON.parse(document.getElementById('geojson').textContent)
+            data: geojson
         });
+
         map.addLayer({
             id: 'data',
             type: 'symbol',
             source: 'data',
             layout: {
-                'icon-image': 'sailor', // Set the icon image
+                'icon-image': '{icon}', // Set the icon image
                 'icon-size': 1, // Set the icon size
                 'icon-allow-overlap': true // Allow icons to overlap
             },
@@ -39,5 +82,48 @@
             }
         });
 
+        zoomToExtent()
     });
+
+    map.on('click', 'data', function(e){
+        let  coordinates = e.features[0].geometry.coordinates.slice();
+        let description = e.features[0].properties.name;
+
+        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+        }
+
+        new maplibregl.Popup()
+        .setLngLat(coordinates)
+        .setHTML(description)
+        .addTo(map);
+    })
+
+    // Change the cursor to a pointer when the mouse is over the places layer.
+    map.on('mouseenter', 'data', function () {
+        map.getCanvas().style.cursor = 'pointer';
+    });
+
+    // Change it back to a pointer when it leaves.
+    map.on('mouseleave', 'data', function () {
+        map.getCanvas().style.cursor = '';
+    });
+
+
+    function flyTo(lon,lat,zoom=18) {
+        map.flyTo({
+            center :[lon,lat],
+            zoom: zoom,
+            essential: true
+        })
+
+        let element = document.getElementById('map');
+        element.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function zoomToExtent(padding=20) {
+        const bbox = turf.bbox(geojson)
+        map.fitBounds(bbox, {padding: padding})
+    }
+
 </script>

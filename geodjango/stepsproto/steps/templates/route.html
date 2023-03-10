@@ -12,11 +12,12 @@
             <div class = "col-md-6">
                  <h1>{{ route.name }}</h1>
                  <p> {{ route.text|safe }}</p>
-                 <p>Route start: <b>{{route.startname}}</b></p>
-                 <p>Route end:   <b>{{route.endname}}</b></p>
+                 <p>Route start: <a href="javascript:flyTo({{route.startpoint.x}},{{route.startpoint.y}})">{{route.startname}}</a></p>
+                 <p>Route end:   <a href="javascript:flyTo({{route.endpoint.x}},{{route.endpoint.y}})">{{route.endname}}</a></p>
             </div>
             <div class = "col-md-6">
                 <div id='map' class="routemap"></div>
+                <button class="map-reset-button" onClick="zoomToExtent()">Reset</button>
                 {% include 'mapbox.html' %}
             </div>
         </div>
@@ -28,7 +29,7 @@
     {% for instruction in instructions|dictsort:"id" %}
     <div class="row align-items-center" id="{{instruction.id}}_ins">
         <div class="col-md-3" >
-            {{instruction.locationname}}
+            <a href="javascript:flyTo({{instruction.location.x}},{{instruction.location.y}})">{{instruction.name}}</a>
         </div>
         <div class="col-md-8">
             {{instruction.instruction|safe}}
@@ -45,7 +46,7 @@
     {% for step in steps %}
      <div class="row align-items-center" id="{{step.id}}_ins">
         <div class="col-md-3" >
-            {{step.name}}
+            <a href="javascript:flyTo({{step.location.x}},{{step.location.y}})">{{step.name}}</a>
         </div>
         <div class="col-md-8">
             {{step.text|safe}}
