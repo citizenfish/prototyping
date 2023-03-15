@@ -3,6 +3,24 @@
 ```bash
 brew install libgeoip gdal
 ```
+
+## Within venv (pycharm)
+
+```bash
+python -m pip install Django
+pip install pyscopg2 Pillow
+
+django-admin startproject stepsproto
+cd stepsproto
+python manage.py startapp steps
+
+python manage.py makemigrations
+python mange.py migrate
+
+python manage.py createsuperuser
+python manage.py runserver
+```
+
 ## Settings.py
 
 Add the following
@@ -40,22 +58,7 @@ DATABASES = {
 }
 ```
 
-## Within venv (pycharm)
 
-```bash
-python -m pip install Django
-pip install pyscopg2, Pillow
-
-django-admin startproject stepsproto
-cd stepsproto
-python manage.py startapp steps
-
-python manage.py makemigrations
-python mange.py migrate
-
-python manage.py createsuperuser
-python manage.py runserver
-```
 ## Clearing after altering model
 
 - remove everything from migrations dir
