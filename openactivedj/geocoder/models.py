@@ -1,6 +1,5 @@
 from django.contrib.gis.db import models
 
-
 class Test(models.Model):
     name1 = models.CharField(max_length=255)
 

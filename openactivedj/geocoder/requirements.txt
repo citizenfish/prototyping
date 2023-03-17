@@ -1,1 +1,4 @@
 requests
+pyproj
+bs4
+Pillow

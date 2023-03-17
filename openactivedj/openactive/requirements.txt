@@ -1,0 +1,2 @@
+django-bulk-sync
+django-ckeditor

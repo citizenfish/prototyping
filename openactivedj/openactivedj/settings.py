@@ -97,10 +97,29 @@ DATABASES = {
         "PASSWORD": os.environ.get('db_password'),
         "OPTIONS" :{
             'options': f'-c search_path={SCHEMA},public'
+        },
+        # added by Dave to use same DB for testing
+        'TEST' :{
+            'NAME' : os.environ.get('db_name')
         }
     }
 }
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'WARNING', #set to DEBUG FOR SQL
+        },
+    },
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
