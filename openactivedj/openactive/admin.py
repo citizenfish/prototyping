@@ -1,5 +1,5 @@
 from django.contrib.gis import admin
-from openactive.models import Category, Event, Parameter, OpenActiveFeed
+from openactive.models import Category, Event, Parameter, Feed, FeedDistribution
 
 
 # Register your models here.
@@ -19,6 +19,9 @@ class ParametersAdmin(admin.GISModelAdmin):
     list_display = ('name', 'value')
 
 
-@admin.register(OpenActiveFeed)
+class FeedDistributionInline(admin.TabularInline):
+    model = FeedDistribution
+@admin.register(Feed)
 class OpenActiveFeedsAdmin(admin.GISModelAdmin):
     list_display = ('org', 'metadata')
+    inlines = [FeedDistributionInline]

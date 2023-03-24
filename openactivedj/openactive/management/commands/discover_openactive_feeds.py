@@ -1,6 +1,6 @@
 from openactive.common.util.json import get_json, get_json_ld
 from django.core.management.base import BaseCommand, CommandError
-from openactive.models import Parameter, OpenActiveFeed
+from openactive.models import Parameter, Feed, FeedDistribution
 
 
 class Command(BaseCommand):
@@ -22,20 +22,37 @@ class Command(BaseCommand):
             help='Feeds to exclude',
             required=False,
         )
+        parser.add_argument(
+            '--reload',
+            action='store_true',
+            help='Delete all existing data and reload',
+            required=False,
+            default=False
+        )
 
     def handle(self, *args, **options):
-        print('Discovering OpenActive feeds')
+
+        if options['reload']:
+            self.truncate_all()
+
+        self.stdout.write(self.style.NOTICE('Discovering OpenActive Feeds'))
 
         # Can exclude organisations if we want
         excluded_feeds = options.get('excluded_feeds', '')
         excluded_feeds = excluded_feeds.split(',') if excluded_feeds else []
+
         # We need a catalog url to work out from
         url = options.get('openactive_discovery_url')
         if not url:
             try:
                 url = Parameter.objects.get(name='openactive_discovery_url').value
             except  Parameter.DoesNotExist:
-                raise CommandError('openactive_discovery_url has not been defined in parameters or command line')
+
+                s = input(f'openactive_discovery_url not set, use default url {self.url} [y/N]')
+                if s[0].lower() == 'y':
+                    url = self.url
+                else:
+                    raise CommandError('openactive_discovery_url has not been defined in parameters or command line')
 
         # First we pull our list of catalogues
         catalogues = get_json(url, 'hasPart')
@@ -44,30 +61,60 @@ class Command(BaseCommand):
 
         for hasPart in catalogues:
 
-            # We retrieve the metadata for each catalogue this is an embedded script in a HTML page :-(
+            # First we must get a list of providers
             data_catalogues = get_json(hasPart, 'dataset')
-            #
+
             for dataSet in data_catalogues:
+                # We retrieve the metadata for each catalogue this is an embedded JSON+LD structure in a HTML page :-(
                 metadata = get_json_ld(dataSet)
+
                 if metadata:
                     feed_type = metadata.get('@type')
                     # We are only loading dataset feeds
                     if feed_type == 'Dataset':
-                        print(f"{dataSet} : {feed_type}")
-                        feed_id = metadata.get('@id')
-                        if feed_id:
-                            if feed_id not in excluded_feeds:
-                                org, created = OpenActiveFeed.objects.update_or_create(
-                                    org=feed_id,
+                        org = metadata.get('@id')
+                        self.stdout.write(self.style.NOTICE(f'Loading Dataset from {org}'))
+                        if org:
+                            if org not in excluded_feeds:
+                                f_org, created = Feed.objects.update_or_create(
+                                    org=org,
                                     defaults={
                                         'metadata': metadata
                                     }
                                 )
+
+                                self.stdout.write(self.style.NOTICE(f'Added {org}')) if created else self.stdout.write(
+                                    self.style.NOTICE(f' Update {org}'))
+
+                            # Now add the distributions for each feed
+                            for distribution in metadata.get('distribution'):
+                                distribution_type = distribution.get('additionalType')
+                                self.stdout.write(self.style.NOTICE(f'Loading Distribution type {distribution_type}'))
+
+                                if distribution.get('@type') == 'DataDownload':
+                                    d_org, created = FeedDistribution.objects.update_or_create(
+                                        dist_org=f_org,
+                                        additionaltype=distribution.get('additionalType'),
+                                        defaults={
+                                            'contenturl': distribution.get('contentUrl'),
+                                            'encoding': distribution.get('encodingFormat'),
+                                            'dist_name': distribution.get('name', ''),
+                                            'metadata': distribution
+                                        }
+                                    )
+                                self.stdout.write(self.style.NOTICE(f'Added {org}')) if created else self.stdout.write(
+                                    self.style.NOTICE(f' Update {org}'))
+
                         else:
-                            self.stdout.write(self.style.ERROR(f'{dataSet}: No id in metadata {metadata}'))
+                            self.stderr.write(self.style.ERROR(f'{dataSet}: No id in metadata {metadata}'))
                     else:
-                        self.stdout.write(self.style.ERROR(f'{dataSet}: @type {feed_type} not supported'))
+                        self.stderr.write(self.style.ERROR(f'{dataSet}: @type {feed_type} not supported'))
 
                 else:
-                    self.stdout.write(self.style.ERROR(f'No metadata for {dataSet}'))
+                    self.stderr.write(self.style.ERROR(f'No metadata for {dataSet}'))
 
+    def truncate_all(self):
+        s = input('Delete ALL discovered feeds [y/N]')
+        if s[0].lower() == 'y':
+            self.stdout.write(self.style.WARNING('*** Deleting all discovered feeds ***'))
+            Feed.objects.all().delete()

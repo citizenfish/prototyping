@@ -1,92 +1,133 @@
-import requests
 from django.core.management.base import BaseCommand
-from django.contrib.gis.geos import Point
-from openactive.models import Course, Event, CourseInstance, FacilityUse, OnDemandEvent
+from openactive.common.mappings.model_loader import Loader
+from openactive.models import Feed
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from django.db.models.expressions import RawSQL
+from datetime import datetime, timezone
+
 
 class Command(BaseCommand):
     help = 'Imports data from an OpenActive API'
 
-    MODEL_MAP = {
-        'course': {
-            'title': 'title',
-            'description': 'description',
-            'oa_id': 'oa_id',
-            'oa_org': 'oa_org'
-        },
-        'event': {
-            'title': 'event.title',
-            'description': 'event.description',
-            'oa_id': 'id',
-            'modified':'modified',
-            'state':'state'
-        },
-        'courseinstance': {
-            'title': 'name',
-            'description': 'description',
-            'oa_id': 'identifier'
-        },
-        'facilityuse': {
-            'title': 'name',
-            'description': 'description',
-            'oa_id': 'identifier'
-        },
-        'ondemandevent': {
-            'title': 'event.title',
-            'description': 'event.description',
-            'oa_id': 'event.id'
-        }
-    }
+    def __init__(self, stdout=None, stderr=None, no_color=False, force_color=False):
+        super().__init__(stdout, stderr, no_color, force_color)
+        self.loader = Loader()
+        self.providers = []
+        self.ignore_lasturl = True
 
     def add_arguments(self, parser):
-        parser.add_argument('url', type=str, help='The OpenActive API URL to fetch data from')
-        parser.add_argument('org', type=str, help='The OpenActive oa_org for this organisation')
+        parser.add_argument(
+            '--reload',
+            action='store_true',
+            help='Delete all existing data and reload',
+            required=False,
+            default=False
+        )
+
+        parser.add_argument(
+            '--reload-no-warning',
+            action='store_true',
+            help='Delete all existing data and reload with no warning prompt',
+            required=False,
+            default=False
+        )
+
+        parser.add_argument(
+            '--types',
+            dest='types',
+            help='A comma separated subset of Openactive types to process',
+            required=False,
+            default=None
+        )
+
+        parser.add_argument(
+            '--org',
+            dest='org',
+            help='A single organisation id to load',
+            required=False,
+            default=None
+        )
+
+        parser.add_argument(
+            '--threads',
+            dest='threads',
+            type=int,
+            help='Number of threads',
+            required=False,
+            default=4
+        )
 
     def handle(self, *args, **options):
-        url = options['url']
-        res = requests.get(url)
-        jsonres = res.json()
-        items = jsonres.get('items')
 
-        courses = []
-        events = []
-        course_instances = []
-        facility_uses = []
-        on_demand_events = []
+        # First decide which openactive types we are operating on
+        types = options['types']
+        if types:
+            types = types.lower().split(',')
 
-        for item in items:
-            item['oa_org'] = options['org']
-            item_type = item.get('kind').lower()
+        # The Loader class contains various convenience methods for mapping/Loading Openactive fields and other
+        # processing utilities
+        self.loader = Loader(types=types)
+        self.stdout.write(self.style.NOTICE(f'Loading {self.loader.list_mappings()}'))
 
-            if item_type == 'course':
-                course_data = {k: item.get(v) for k, v in self.MODEL_MAP[item_type].items()}
-                course_data['location'] = Point(float(item['location']['longitude']), float(item['location']['latitude']))
-                courses.append(Course(**course_data))
+        # Next are we doing a complete reload or an update
+        if options['reload'] or options['reload_no_warning']:
+            self.truncate_all(options['reload_no_warning'])
+            self.ignore_lasturl = True
 
-            elif item_type == 'event':
-                event_data = {k: item.get(v) for k, v in self.MODEL_MAP[item_type].items()}
-                event_data['location'] = Point(float(item['location']['longitude']), float(item['location']['latitude']))
-                events.append(Event(**event_data))
+        # Now get the list of providers unless we are loading only one
+        self.providers = [options['org']] if options['org'] else self.get_feeds()
 
-            elif item_type == 'courseinstance':
-                course_instance_data = {k: item.get(v) for k, v in self.MODEL_MAP[item_type].items()}
-                course_instances.append(CourseInstance(**course_instance_data))
+        # Main processing loop running in a multithreading environment to speed things up
+        with ThreadPoolExecutor(max_workers=options['threads']) as executor:
+            futures = [executor.submit(self.process_url, org=org, types=types, ignore_lasturl=self.ignore_lasturl) for
+                       org in self.providers]
 
-            elif item_type == 'facilityuse':
-                facility_use_data = {k: item.get(v) for k, v in self.MODEL_MAP[item_type].items()}
-                facility_uses.append(FacilityUse(**facility_use_data))
+        # Capture results of each thread and update the org records
+        for future in as_completed(futures):
+            org, count, errors = future.result()
+            self.stdout.write(self.style.SUCCESS(f'Loaded {count} for {org} with {len(errors)} errors'))
 
-            elif item_type == 'ondemandevent':
-                on_demand_event_data = {k: item.get(v) for k, v in self.MODEL_MAP[item_type].items()}
-                on_demand_events.append(OnDemandEvent(**on_demand_event_data))
+        # Remove all deleted items
+        self.loader.remove_deleted()
+        self.stdout.write(self.style.SUCCESS(f'Removed deleted items from {self.loader.list_mappings()}'))
 
-            else:
-                print(f'Cannot deal with {item_type}')
+    @staticmethod
+    def process_url(**kwargs):
+        #
+        loader = Loader(**kwargs)
+        org, count, errors = loader.model_loader(org=kwargs['org'])
+
+        # Get the current date and time
+        now = datetime.now()
+
+        # Format the date and time as a string to be used as a key in metadata
+        key_to_update = now.strftime('%Y-%m-%d_%H:%M:%S')
+
+        # Make an update record to add to the Feed and update it
+        metadata = {'errors': errors, 'count': count}
+
+        Feed.objects.filter(org=org).update(
+            metadata=RawSQL(
+                "jsonb_set(metadata, %s, %s)",
+                ([key_to_update], metadata)
+            ),
+            lastload=timezone.now()
+        )
+
+        return org, count, errors
+
+    def truncate_all(self, no_warning):
+        if not no_warning:
+            s = input(f'Delete ALL loaded OpenActive data for {self.loader.list_mappings()} [y/N]')
+            if s[0].lower() != 'y':
                 exit()
 
-        Course.objects.bulk_create(courses)
-        Event.objects.bulk_create(events)
-        CourseInstance.objects.bulk_create(course_instances)
-        FacilityUse.objects.bulk_create(facility_uses)
-        OnDemandEvent.objects.bulk_create(on_demand_events)
+        self.stdout.write(self.style.WARNING('*** Deleting all OpenActive data ***'))
+        self.stdout.write(self.style.NOTICE(self.loader.truncate_all()))
 
-        self.stdout.write(self.style.SUCCESS(f'Successfully imported {len(items)} items from {url}'))
+    @staticmethod
+    def get_feeds():
+        feeds = []
+        for f in Feed.feed_enabled.all().values('org'):
+            feeds.append(f['org'])
+        return feeds

@@ -48,13 +48,28 @@ class GridRefGeocoder:
 class CoordinateGeocoder:
 
     @staticmethod
-    def geocoder(x, y, in_crs='EPSG:4326', out_crs='EPSG:4326'):
+    def geocode(x, y, in_crs='EPSG:4326', out_crs='EPSG:4326'):
         # need a numeric code for CRS to set point srid
         in_crs_code = pyproj.CRS(in_crs).to_epsg()
 
+        # Convert strings to floats
         # Create a GeoDjango point geometry in the output CRS
         point = Point(x, y, srid=in_crs)
         point.srid = in_crs_code
         point.transform(out_crs)
 
         return point
+
+
+def geocoder(item):
+    point = None
+    lat = item.get('latitude')
+    lon = item.get('longitude')
+    if lat and lon:
+        point = CoordinateGeocoder.geocode(lon, lat)
+    elif item.get('gridref'):
+        point = GridRefGeocoder.geocode(item.get('gridref'))
+    elif item.get('locationpostcode'):
+        point = OpennamesGeocoder.geocode(item.get('locationpostcode'))
+
+    return point
