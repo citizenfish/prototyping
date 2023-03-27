@@ -2,10 +2,10 @@ import traceback
 from urllib.parse import urljoin
 
 from django.db.models import Q
-from openactive.models import FeedDistribution
+from openactive.models import FeedDistribution,Rule, apply_rules
 from openactive.common.mappings.model_map import MODEL_MAP
 from openactive.common.util.json import get_json
-from openactive.common.util.map import openactive_item_mapper
+from openactive.common.util.map import openactive_item_mapper,kinds_count
 
 from geocoder.geocoders import geocoder
 
@@ -41,6 +41,9 @@ class Loader:
         # This structure maps openactive schema to our internal model
         self.mappings = {key: value for key, value in MODEL_MAP.items() if
                          key in self.types} if self.types else MODEL_MAP
+
+        # This holds the tag classification mappings, we load on class initiation to prevent a load every classification run.
+        self.rules = Rule.objects.all()
 
         # Used in upsert query later, this is our primary key
         self.unique_fields = ['oa_org', 'oa_id']
@@ -84,13 +87,16 @@ class Loader:
 
                     if self.rpde_data:
                         # Map Data
-                        self.map_rpde_data()
-
-                        # Classify Data
-                        self.classify_rpde_data()
+                        m = self.map_rpde_data()
+                        # No records mapped so move on to next url
+                        if m == 0:
+                            continue
 
                         # Geocode Data
                         self.geocode_rpde_data()
+
+                        # Classify Data
+                        self.classify_rpde_data()
 
                         # Load Data
                         urlcount += self.load_rpde_data()
@@ -141,15 +147,10 @@ class Loader:
             if kind:
                 self.mapped_records[kind].append(record)
 
-        return len(self.mapped_records)
-
-    def classify_rpde_data(self, **kwargs):
-        print(f'classify_rpde_data {sum(len(values) for values in self.mapped_records.values())} items')
-        # TODO add in our classifiers here
-        return None
+        return kinds_count(self.mapped_records)
 
     def geocode_rpde_data(self, **kwargs):
-        print(f'geocode_rpde_data {sum(len(values) for values in self.mapped_records.values())} items')
+        print(f'geocode_rpde_data {kinds_count(self.mapped_records)} items')
 
         for kind in self.mapped_records:
             self.imports[kind] = []
@@ -162,18 +163,37 @@ class Loader:
                 # Now we make an ORM object ready for database import
                 self.imports[kind].append(model(**item))
 
-        return len(self.imports)
+        return kinds_count(self.imports)
+
+    """
+    Must happen after geocoding as we operate on objects not dictionary values
+    """
+    def classify_rpde_data(self, **kwargs):
+        count = kinds_count(self.imports)
+        print(f'classify_rpde_data {count} items')
+        # We iterate through the items and call the function apply_rules imported from the model
+
+        if self.rules:
+            for kind in self.imports:
+                for item in self.imports[kind]:
+                    apply_rules(item, self.rules)
+
+        else:
+            print('No classification rules set')
+
+        return count
+
 
     def load_rpde_data(self, **kwargs):
-        print(f'load_rpde_data {sum(len(values) for values in self.imports.values())} items')
+        print(f'load_rpde_data: {kinds_count(self.imports)} items')
         result = []
         for kind in self.imports:
             records = self.imports[kind]
             if len(records) > 0:
                 model = self.mappings[kind]['model']
                 try:
-
-                    result = model.objects.bulk_create(records, update_conflicts=True,
+                    result = model.objects.bulk_create(records,
+                                                       update_conflicts=True,
                                                        unique_fields=self.unique_fields,
                                                        update_fields=self.unique_keys)
                 except Exception as e:
@@ -186,8 +206,7 @@ class Loader:
         self.urlerrors.append({self.url: error})
 
     def list_mappings(self):
-        keys = list(self.mappings.keys())
-        return ','.join(keys)
+        return f'{self.mappings.keys()}'
 
     def truncate_all(self):
 

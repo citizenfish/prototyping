@@ -3,11 +3,12 @@ import zipfile
 import tempfile
 import os
 import subprocess
+
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 
-class OSdata(BaseCommand):
+class OSLoader(BaseCommand):
     product_url = 'https://api.os.uk/downloads/v1/products'
 
     def __init__(self, **kwargs):
@@ -29,7 +30,7 @@ class OSdata(BaseCommand):
                     product_details = requests.get(product['url']).json()
                     break
 
-            if product_details == None:
+            if product_details is None:
                 raise CommandError(f'{self.product} Not found')
 
             format_list = requests.get(product_details["downloadsUrl"]).json()
@@ -42,12 +43,12 @@ class OSdata(BaseCommand):
             raise CommandError(str(Error))
 
     def download(self, **kwargs):
-        if self.downloadURL == None:
+        if self.downloadURL is None:
             raise CommandError('Download url not set please check product/url')
 
-        osData = requests.get(self.downloadURL, stream=True)
+        os_data = requests.get(self.downloadURL, stream=True)
         with tempfile.NamedTemporaryFile(delete=False) as f:
-            for chunk in osData.iter_content(chunk_size=kwargs.get('chunk_size', 8192)):
+            for chunk in os_data.iter_content(chunk_size=kwargs.get('chunk_size', 8192)):
                 f.write(chunk)
 
             f.flush()
@@ -65,7 +66,7 @@ class OSdata(BaseCommand):
         if self.format == 'GeoPackage':
             return self.geopackage(temp_extract_folder)
 
-    def geopackage(self,temp_extract_folder):
+    def geopackage(self, temp_extract_folder):
 
         gpkg_file = None
         for root, dirs, files in os.walk(temp_extract_folder):
@@ -82,8 +83,7 @@ class OSdata(BaseCommand):
             self.stdout.write(self.style.ERROR(f'No geopackage file found in the downloaded ZIP file.'))
             return {}
 
-
-    def ogr_import(self,**kwargs):
+    def ogr_import(self, **kwargs):
 
         if not self.filename:
             raise CommandError('filename not set have you downloaded data')
@@ -118,14 +118,13 @@ class OSdata(BaseCommand):
             '-update',
             '-sql', f"SELECT id AS ogc_fid, * FROM {kwargs.get('layer_name')}",
             '-lco', f"GEOMETRY_NAME={kwargs.get('geometry_name', 'geom')}",
-            '--config','OGR_TRUNCATE','YES',
-            '--config', 'PG_USE_COPY','YES',
-            '-s_srs', kwargs.get('t_srs','EPSG:27700'),
-            '-t_srs', kwargs.get('t_srs','EPSG:4326')
+            '--config', 'OGR_TRUNCATE', 'YES',
+            '--config', 'PG_USE_COPY', 'YES',
+            '-s_srs', kwargs.get('t_srs', 'EPSG:27700'),
+            '-t_srs', kwargs.get('t_srs', 'EPSG:4326')
         ]
 
-
-        self.stdout.write(self.style.NOTICE(" ".join(ogr2ogr_command)))
+        self.stdout.write(self.style.NOTICE(" ".join(ogr2ogr_command[4:])))
 
         layer = kwargs.get('layers')
         if layer:

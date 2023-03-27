@@ -5,6 +5,9 @@ from jsonpath_ng.ext import parse
 from functools import reduce
 
 
+def kinds_count(kinds_dict):
+    return sum(len(values) for values in kinds_dict.values())
+
 def openactive_item_mapper(**kwargs):
     r = kwargs.get('item')
     mappings = kwargs.get('mappings')

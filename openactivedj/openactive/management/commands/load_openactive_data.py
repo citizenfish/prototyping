@@ -3,7 +3,9 @@ from openactive.common.mappings.model_loader import Loader
 from openactive.models import Feed
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from django.db.models.expressions import RawSQL
-from datetime import datetime, timezone
+from django.db import connection
+from datetime import datetime
+import pytz
 
 
 class Command(BaseCommand):
@@ -25,7 +27,7 @@ class Command(BaseCommand):
         )
 
         parser.add_argument(
-            '--reload-no-warning',
+            '--reload_no_warning',
             action='store_true',
             help='Delete all existing data and reload with no warning prompt',
             required=False,
@@ -57,6 +59,15 @@ class Command(BaseCommand):
             default=4
         )
 
+        parser.add_argument(
+            '--timezone',
+            dest='timezone',
+            type=str,
+            help='Timezone default: Europe/London ',
+            required=False,
+            default='Europe/London'
+        )
+
     def handle(self, *args, **options):
 
         # First decide which openactive types we are operating on
@@ -79,7 +90,8 @@ class Command(BaseCommand):
 
         # Main processing loop running in a multithreading environment to speed things up
         with ThreadPoolExecutor(max_workers=options['threads']) as executor:
-            futures = [executor.submit(self.process_url, org=org, types=types, ignore_lasturl=self.ignore_lasturl) for
+            futures = [executor.submit(self.process_url, org=org, types=types, ignore_lasturl=self.ignore_lasturl,
+                                       timezone=options['timezone']) for
                        org in self.providers]
 
         # Capture results of each thread and update the org records
@@ -93,15 +105,16 @@ class Command(BaseCommand):
 
     @staticmethod
     def process_url(**kwargs):
-        #
+        # Close existing connection to ensure we get a connection for each thread
+        connection.close()
         loader = Loader(**kwargs)
         org, count, errors = loader.model_loader(org=kwargs['org'])
 
         # Get the current date and time
-        now = datetime.now()
+        now = datetime.now(pytz.timezone(kwargs.get('timezone')))
 
         # Format the date and time as a string to be used as a key in metadata
-        key_to_update = now.strftime('%Y-%m-%d_%H:%M:%S')
+        key_to_update = now.strftime('%Y-%m-%d_%H_%M_%S')
 
         # Make an update record to add to the Feed and update it
         metadata = {'errors': errors, 'count': count}
@@ -111,7 +124,7 @@ class Command(BaseCommand):
                 "jsonb_set(metadata, %s, %s)",
                 ([key_to_update], metadata)
             ),
-            lastload=timezone.now()
+            lastload=now
         )
 
         return org, count, errors

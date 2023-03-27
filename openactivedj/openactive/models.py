@@ -1,8 +1,8 @@
 from django.contrib.gis.db import models
-from django.utils.timezone import now
 from ckeditor.fields import RichTextField
 from geocoder.geocoders import CoordinateGeocoder
-from django.core.exceptions import ValidationError
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class Parameter(models.Model):
@@ -110,7 +110,7 @@ class CoreOpenactiveTable(models.Model):
         (STATE_DELETED, 'Deleted'),
     ]
 
-    title = models.CharField('Title', max_length=150)
+    title = models.TextField('Title')
     description = RichTextField('Description')
     eventurl = models.URLField('Event URL')
     images = models.JSONField('Images', null=True)
@@ -125,14 +125,14 @@ class CoreOpenactiveTable(models.Model):
     gridref = models.TextField('Grid Reference', null=True)
     locality = models.TextField('Locality', null=True)
     locationname = models.TextField('Location Name', null=True)
-    locationaddress1 = models.CharField('Address 1', max_length=200, null=True)
-    locationaddress2 = models.CharField('Address 2', max_length=200, null=True)
-    locationaddress3 = models.CharField('Address 3', max_length=200, null=True)
-    locationaddress4 = models.CharField('Address 4', max_length=200, null=True)
-    locationaddress5 = models.CharField('Address 5', max_length=200, null=True)
-    locationpostcode = models.CharField('Postcode', max_length=9, null=True)
+    locationaddress1 = models.TextField('Address 1', null=True)
+    locationaddress2 = models.TextField('Address 2', null=True)
+    locationaddress3 = models.TextField('Address 3', null=True)
+    locationaddress4 = models.TextField('Address 4', null=True)
+    locationaddress5 = models.TextField('Address 5', null=True)
+    locationpostcode = models.CharField('Postcode', max_length=15, null=True)
 
-    contactphone = models.CharField('Contact Telephone', max_length=50)
+    contactphone = models.CharField('Contact Telephone', max_length=100)
     contactemail = models.EmailField('Contact Email address', null=True)
 
     agemin = models.IntegerField('Minimum Age', default=0)
@@ -254,19 +254,25 @@ class Slot(CoreOpenactiveTable):
         unique_together = [['oa_org', 'oa_id']]
 
 
-class TagClassifier(models.Model):
-    TYPE_CHOICES = [
-        ('*', 'All'),
-        ('Course', 'Course'),
-        ('Course Instance', 'Course Instance'),
-        ('Event', 'Event'),
-        ('FacilityUse', 'Facility Use'),
-        ('IndividualFacilityUse', 'Individual Facility Use'),
-        ('OnDemandEvent', 'On Demand Event'),
-        ('Session', 'Session'),
-        ('SessionSeries', 'Session Series'),
-        ('League', 'League'),
-    ]
+class Rule(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    typefield_value = models.CharField('OpenActive Type', max_length=50, choices=TYPE_CHOICES)
-    tagfield_values = models.JSONField('Item Tags')
+    systemtagfield_value = models.CharField(max_length=50)
+    sourcetagfield_values = models.JSONField()
+
+
+# Classify items using the rules in the Rule model, can be called with rules from bulk load process or retrieve rules
+def apply_rules(item, rules=None):
+    rules = rules if rules else Rule.objects.all()
+
+    for rule in rules:
+        if any(tag in item.sourcetags for tag in rule.souretagfield_values):
+            item.category = rule.category
+            # Do not save if rules passed in as we are in bulk mode
+            if rules is None:
+                item.save()
+            break
+
+
+@receiver(post_save, sender=CoreOpenactiveTable)
+def apply_rules_on_item_creation(sender, instance, created, **kwargs):
+    apply_rules(instance)
