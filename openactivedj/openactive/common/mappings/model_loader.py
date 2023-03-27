@@ -70,13 +70,14 @@ class Loader:
             q_objects)
 
         if len(distributions) == 0:
-            return self.org, 0, self.errors.extend([{'model_loader': f'No distributions found for {self.org} with types {self.types}'}])
+            self.errors.extend([{'model_loader': f'No distributions found for {self.org} with types {self.types}'}])
+            return self.org, 0, self.errors
 
         org_count = 0
         for d in distributions:
             # We use the class variable as it traps errors
             self.url = d.lasturl if d.lasturl and not self.ignore_last_url else d.contenturl
-            lasturl = None
+
 
             try:
                 # Main distribution url processing loop
@@ -175,8 +176,10 @@ class Loader:
 
         if self.rules:
             for kind in self.imports:
+                model = self.mappings[kind]['model']
+                # This is manually calling the trigger
                 for item in self.imports[kind]:
-                    apply_rules(item, self.rules)
+                    apply_rules(item, model, self.rules)
 
         else:
             print('No classification rules set')
@@ -203,10 +206,11 @@ class Loader:
         return len(result)
 
     def error_handler(self, error):
+        print(f'***** {str(error)} ****')
         self.urlerrors.append({self.url: error})
 
     def list_mappings(self):
-        return f'{self.mappings.keys()}'
+        return list(self.mappings.keys())
 
     def truncate_all(self):
 

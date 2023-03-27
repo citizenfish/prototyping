@@ -1,3 +1,4 @@
+import re
 from django.contrib.gis.db import models
 from ckeditor.fields import RichTextField
 from geocoder.geocoders import CoordinateGeocoder
@@ -74,7 +75,7 @@ class FeedDistribution(models.Model):
         unique_together = [['dist_org', 'additionaltype']]
 
     def __str_(self):
-        return self.type
+        return self.dist_org
 
 
 class Tags(models.Model):
@@ -87,13 +88,13 @@ class Tags(models.Model):
         unique_together = ['tag']
 
     def __str__(self):
-        return self.name
+        return self.tag
 
 
 class Category(models.Model):
-    name = models.CharField("Category Name", max_length=50)
-    description = RichTextField('Category Description')
-    image = models.ImageField('Category Image')
+    name = models.CharField("Category Name", max_length=50, unique=True)
+    description = RichTextField('Category Description', null=True)
+    image = models.ImageField('Category Image', null=True)
 
     class Meta:
         ordering = ['name']
@@ -113,40 +114,40 @@ class CoreOpenactiveTable(models.Model):
     title = models.TextField('Title')
     description = RichTextField('Description')
     eventurl = models.URLField('Event URL')
-    images = models.JSONField('Images', null=True)
+    images = models.JSONField('Images', null=True, blank=True)
 
-    organisername = models.TextField('Organiser', null=True)
-    organiserurl = models.URLField('Organiser URL', null=True)
-    location = models.PointField('Location', null=True)
-    latitude = models.FloatField('Latitude', null=True)
-    longitude = models.FloatField('Longitude', null=True)
-    easting = models.IntegerField('Easting', null=True)
-    northing = models.IntegerField('Northing', null=True)
-    gridref = models.TextField('Grid Reference', null=True)
-    locality = models.TextField('Locality', null=True)
-    locationname = models.TextField('Location Name', null=True)
-    locationaddress1 = models.TextField('Address 1', null=True)
-    locationaddress2 = models.TextField('Address 2', null=True)
-    locationaddress3 = models.TextField('Address 3', null=True)
-    locationaddress4 = models.TextField('Address 4', null=True)
-    locationaddress5 = models.TextField('Address 5', null=True)
-    locationpostcode = models.CharField('Postcode', max_length=15, null=True)
+    organisername = models.TextField('Organiser', null=True, blank=True)
+    organiserurl = models.URLField('Organiser URL', null=True, blank=True)
+    location = models.PointField('Location', null=True, blank=True)
+    latitude = models.FloatField('Latitude', null=True, blank=True)
+    longitude = models.FloatField('Longitude', null=True, blank=True)
+    easting = models.IntegerField('Easting', null=True, blank=True)
+    northing = models.IntegerField('Northing', null=True, blank=True)
+    gridref = models.TextField('Grid Reference', null=True, blank=True)
+    locality = models.TextField('Locality', null=True, blank=True)
+    locationname = models.TextField('Location Name', null=True, blank=True)
+    locationaddress1 = models.TextField('Address 1', null=True, blank=True)
+    locationaddress2 = models.TextField('Address 2', null=True, blank=True)
+    locationaddress3 = models.TextField('Address 3', null=True, blank=True)
+    locationaddress4 = models.TextField('Address 4', null=True, blank=True)
+    locationaddress5 = models.TextField('Address 5', null=True, blank=True)
+    locationpostcode = models.CharField('Postcode', max_length=15, null=True, blank=True)
 
-    contactphone = models.CharField('Contact Telephone', max_length=100)
-    contactemail = models.EmailField('Contact Email address', null=True)
+    contactphone = models.CharField('Contact Telephone', max_length=100, blank=True)
+    contactemail = models.EmailField('Contact Email address', null=True, blank=True)
 
-    agemin = models.IntegerField('Minimum Age', default=0)
-    agemax = models.IntegerField('Maximum Age', default=100)
-    agestring = models.CharField('Age Descriptor', max_length=50, default='All Ages')
+    agemin = models.IntegerField('Minimum Age', default=0, blank=True)
+    agemax = models.IntegerField('Maximum Age', default=100, blank=True)
+    agestring = models.CharField('Age Descriptor', max_length=50, default='All Ages', blank=True)
 
-    eventdate = models.DateField('Event Date', null=True)
-    eventdatestart = models.DateField('Event Date Start', null=True)
-    eventdateend = models.DateField('Event Date End', null=True)
-    eventtime = models.TimeField('Event Time', null=True)
+    eventdate = models.DateField('Event Date', null=True, blank=True)
+    eventdatestart = models.DateField('Event Date Start', null=True, blank=True)
+    eventdateend = models.DateField('Event Date End', null=True, blank=True)
+    eventtime = models.TimeField('Event Time', null=True, blank=True)
 
-    sourcetags = models.JSONField('Tags from source', null=True)
-    systemtags = models.JSONField('System added tags', null=True)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, null=True)
+    sourcetags = models.JSONField('Tags from source', null=True, blank=True)
+    systemtags = models.JSONField('System added tags', null=True, blank=True)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, null=True, blank=True)
 
     state = models.CharField('State', max_length=10, choices=STATE_CHOICES, default=STATE_UPDATED)
     published = models.BooleanField('Published', default=False)
@@ -155,8 +156,8 @@ class CoreOpenactiveTable(models.Model):
     oa_org = models.CharField(max_length=255)
     oa_id = models.CharField(max_length=50)
     modified = models.BigIntegerField('Modified', default=0)
-    license = models.TextField('License', null=True)
-    rawdata = models.JSONField(null=True)
+    license = models.TextField('License', null=True, blank=True)
+    rawdata = models.JSONField(null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -255,24 +256,62 @@ class Slot(CoreOpenactiveTable):
 
 
 class Rule(models.Model):
+    RULE_TYPE_CHOICES = (
+        ('title_regex', 'Regular Expression (Title)'),
+        ('desc_regex', 'Regular Expression (Description)'),
+        ('tag', 'Tag')
+    )
+
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     systemtagfield_value = models.CharField(max_length=50)
-    sourcetagfield_values = models.JSONField()
+    sourcetagfield_values = models.JSONField(blank=True,null=True)
+    regex_search = models.TextField('Regex to find', null=True)
+    rule_type = models.CharField(max_length=15, choices=RULE_TYPE_CHOICES, default='tag')
 
 
-# Classify items using the rules in the Rule model, can be called with rules from bulk load process or retrieve rules
-def apply_rules(item, rules=None):
+"""
+Classify items using the rules in the Rule model, can be called with rules from bulk load process or retrieve rules
+This code will set systemtags if a rule match is found and/or set the category for an item
+"""
+
+def apply_rules(item, sender, rules=None):
+    saveitem = True if not rules else False
     rules = rules if rules else Rule.objects.all()
+    changed = False
+    item.systemtags = item.systemtags if item.systemtags else []
 
     for rule in rules:
-        if any(tag in item.sourcetags for tag in rule.souretagfield_values):
-            item.category = rule.category
-            # Do not save if rules passed in as we are in bulk mode
-            if rules is None:
-                item.save()
-            break
+        matching_tags = []
+        match = False
+
+        if rule.rule_type == 'tag':
+            matching_tags = set(tag.lower() for tag in item.sourcetags).intersection(
+                tag.lower() for tag in rule.sourcetagfield_values)
+
+        if rule.rule_type == 'title_regex':
+            match = bool(re.search(rule.regex_search, item.title, re.IGNORECASE))
+
+        if rule.rule_type == 'desc_regex':
+            match = bool(re.search(rule.regex_search, item.description, re.IGNORECASE))
+
+        if len(matching_tags) > 0 or match:
+            changed = True
+            if rule.systemtagfield_value:
+                item.systemtags.extend([rule.systemtagfield_value])
+            # Do not overwrite a category that has already been set
+            # Note well that the first match will win
+            if item.category is None and rule.category is not None:
+                item.category = rule.category
+
+    # Do not save if rules passed in as we are in bulk mode
+    if saveitem and changed:
+        # we have to disable the post_save receiver to prevent it being called again
+        post_save.disconnect(apply_rules_on_item_creation, sender=sender)
+        item.save()
+        post_save.connect(apply_rules_on_item_creation, sender=sender)
 
 
-@receiver(post_save, sender=CoreOpenactiveTable)
+# TODO add for other models
+@receiver(post_save, sender=Event)
 def apply_rules_on_item_creation(sender, instance, created, **kwargs):
-    apply_rules(instance)
+    apply_rules(instance, sender)

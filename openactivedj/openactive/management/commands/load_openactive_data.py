@@ -6,6 +6,7 @@ from django.db.models.expressions import RawSQL
 from django.db import connection
 from datetime import datetime
 import pytz
+import json
 
 
 class Command(BaseCommand):
@@ -15,7 +16,7 @@ class Command(BaseCommand):
         super().__init__(stdout, stderr, no_color, force_color)
         self.loader = Loader()
         self.providers = []
-        self.ignore_lasturl = True
+        self.ignore_lasturl = False
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -50,6 +51,7 @@ class Command(BaseCommand):
             default=None
         )
 
+
         parser.add_argument(
             '--threads',
             dest='threads',
@@ -67,6 +69,7 @@ class Command(BaseCommand):
             required=False,
             default='Europe/London'
         )
+
 
     def handle(self, *args, **options):
 
@@ -122,7 +125,7 @@ class Command(BaseCommand):
         Feed.objects.filter(org=org).update(
             metadata=RawSQL(
                 "jsonb_set(metadata, %s, %s)",
-                ([key_to_update], metadata)
+                ([key_to_update], json.dumps(metadata))
             ),
             lastload=now
         )
