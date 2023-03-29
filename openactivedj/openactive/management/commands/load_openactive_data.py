@@ -51,7 +51,6 @@ class Command(BaseCommand):
             default=None
         )
 
-
         parser.add_argument(
             '--threads',
             dest='threads',
@@ -70,6 +69,14 @@ class Command(BaseCommand):
             default='Europe/London'
         )
 
+        parser.add_argument(
+            '--fromdate',
+            dest='fromdate',
+            type=str,
+            help='Date to load from',
+            required=False,
+            default=None
+        )
 
     def handle(self, *args, **options):
 

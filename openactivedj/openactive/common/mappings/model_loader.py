@@ -1,7 +1,11 @@
 import traceback
+from termcolor import colored
 from urllib.parse import urljoin
 
 from django.db.models import Q
+from django.db import IntegrityError
+from django.core import serializers
+
 from openactive.models import FeedDistribution,Rule, apply_rules
 from openactive.common.mappings.model_map import MODEL_MAP
 from openactive.common.util.json import get_json
@@ -25,7 +29,8 @@ class Loader:
     """
 
     def __init__(self, **kwargs):
-        self.types = kwargs.get('types', MODEL_MAP.keys())
+        self.types = kwargs.get('types') if kwargs.get('types') else MODEL_MAP.keys()
+
         self.ignore_last_url = kwargs.get('ignore_lasturl', False)
 
         # These are state variables that change with each url loaded.
@@ -114,7 +119,9 @@ class Loader:
 
             except Exception as e:
                 error_trace = traceback.format_exc()
-                self.error_handler({'model_loader': f'{str(e)}: {error_trace}'})
+                self.error_handler(func='model_loader',
+                                   err=f'{str(e)}: {error_trace[:100]}',
+                                   url=self.url)
 
         return self.org, org_count, self.errors
 
@@ -144,7 +151,10 @@ class Loader:
         self.mapped_records = {key: [] for key, value in self.mappings.items()}
 
         for r in self.rpde_data:
-            kind, record = openactive_item_mapper(item=r, mappings=self.mappings, org=self.org, license=self.license)
+            kind, record = openactive_item_mapper(item=r,
+                                                  mappings=self.mappings,
+                                                  org=self.org,
+                                                  license=self.license)
             if kind:
                 self.mapped_records[kind].append(record)
 
@@ -200,14 +210,24 @@ class Loader:
                                                        unique_fields=self.unique_fields,
                                                        update_fields=self.unique_keys)
                 except Exception as e:
-                    error_trace = traceback.format_exc()
-                    self.error_handler({'load_rpde_data': f'{str(e)}: {error_trace}'})
+                    # Try for individual records and trap the one that failed
+                    for r in records:
+                        try:
+                            r.save()
+                        except IntegrityError as e:
+                            error_trace = traceback.format_exc()
+                            self.error_handler(func='load_rpde_data',
+                                               err=f'{str(e)}: {error_trace[:100]}',
+                                               packet=serializers.serialize('json', r),
+                                               url=self.url)
+                            continue
 
         return len(result)
 
-    def error_handler(self, error):
-        print(f'***** {str(error)} ****')
-        self.urlerrors.append({self.url: error})
+    def error_handler(self, **kwargs):
+        errstr = f"[{kwargs.get('url')}] - {kwargs.get('func')} - {kwargs.get('err')}"
+        print(colored(errstr, 'red'))
+        self.urlerrors.append({self.url: kwargs})
 
     def list_mappings(self):
         return list(self.mappings.keys())

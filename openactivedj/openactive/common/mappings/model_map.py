@@ -19,7 +19,7 @@ GLOBALS = {
         'oa_org': f'{{org}}',
         'eventurl': {'paths': ['data.url', 'data.session_url', 'data.LeagueURL', 'data.beta:virtualLocation.url'], 'default': ''},
         'license': f'{{license}}',
-        'modified': {'paths': ['modified'], 'type': 'int'},
+        'modified': {'paths': ['modified'], 'type': 'str'},
         'rawdata': '*',
         'state': {'paths': ['state'], 'default': 'updated'},
         'online': {'paths': ['data.beta:virtualLocation.url'], 'type': 'exists'}

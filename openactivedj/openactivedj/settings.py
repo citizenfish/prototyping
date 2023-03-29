@@ -47,8 +47,20 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'ckeditor',
     'openactive',
-    'geocoder'
+    'geocoder',
+    'django_elasticsearch_dsl'
 ]
+
+## elasticsearch config
+# docker pull docker.elastic.co/elasticsearch/elasticsearch:7.17.9
+# docker run -p 9200:9200 -e "discovery.type=single-node" -e "xpack.security.enabled=false" docker.elastic.co/elasticsearch/elasticsearch:7.17.9
+
+# TODO move into openactive app so it gets added
+ELASTICSEARCH_DSL={
+    'default': {
+        'hosts': 'localhost:9200'
+    },
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

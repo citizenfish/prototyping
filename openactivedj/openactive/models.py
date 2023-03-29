@@ -4,7 +4,7 @@ from ckeditor.fields import RichTextField
 from geocoder.geocoders import CoordinateGeocoder
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
+from django.utils.html import strip_tags
 
 class Parameter(models.Model):
     name = models.CharField('Parameter Name', max_length=50, unique=True)
@@ -154,8 +154,8 @@ class CoreOpenactiveTable(models.Model):
     online = models.BooleanField('Online', default=False)
 
     oa_org = models.CharField(max_length=255)
-    oa_id = models.CharField(max_length=50)
-    modified = models.BigIntegerField('Modified', default=0)
+    oa_id = models.CharField(max_length=255)
+    modified = models.CharField('Modified', max_length=255)
     license = models.TextField('License', null=True, blank=True)
     rawdata = models.JSONField(null=True, blank=True)
 
@@ -183,8 +183,14 @@ class CoreOpenactiveTable(models.Model):
         self.process_oa_data()
         super(CoreOpenactiveTable, self).save(*args, **kwargs)
 
+    # used for Elasticsearch which will not index ckeditor fields
+    def description_as_text(self):
+        if self.description:
+            return strip_tags(self.description)
+
     def __str__(self):
         return self.title
+
 
 
 class Course(CoreOpenactiveTable):
@@ -284,7 +290,7 @@ def apply_rules(item, sender, rules=None):
         matching_tags = []
         match = False
 
-        if rule.rule_type == 'tag':
+        if rule.rule_type == 'tag' and item.sourcetags:
             matching_tags = set(tag.lower() for tag in item.sourcetags).intersection(
                 tag.lower() for tag in rule.sourcetagfield_values)
 
