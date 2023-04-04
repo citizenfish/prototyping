@@ -16,7 +16,7 @@ class EventModelTests(TestCase):
                     title='TEST Title UPDATE UPSERT',
                     description='TEST Description',
                     eventurl='http://test.com',
-                    sourcetags=['cycling']
+                    sourcetags=['ignore']
                 )
 
         event.save()

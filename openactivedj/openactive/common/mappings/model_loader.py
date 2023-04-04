@@ -9,7 +9,7 @@ from django.core import serializers
 from openactive.models import FeedDistribution,Rule, apply_rules
 from openactive.common.mappings.model_map import MODEL_MAP
 from openactive.common.util.json import get_json
-from openactive.common.util.map import openactive_item_mapper,kinds_count
+from openactive.common.util.map import openactive_item_mapper, kinds_count
 
 from geocoder.geocoders import geocoder
 
@@ -71,8 +71,7 @@ class Loader:
             pattern = f'/{t}s?$'  # We need optional 's' at end to cope with ScheduledSessions/ScheduledSession
             q_objects |= Q(additionaltype__iregex=pattern)
 
-        distributions = FeedDistribution.distribution_enabled.filter(dist_org=self.org).filter(
-            q_objects)
+        distributions = FeedDistribution.distribution_enabled.filter(dist_org=self.org).filter(q_objects)
 
         if len(distributions) == 0:
             self.errors.extend([{'model_loader': f'No distributions found for {self.org} with types {self.types}'}])
@@ -83,7 +82,6 @@ class Loader:
             # We use the class variable as it traps errors
             self.url = d.lasturl if d.lasturl and not self.ignore_last_url else d.contenturl
 
-
             try:
                 # Main distribution url processing loop
                 urlcount = 0
@@ -93,7 +91,7 @@ class Loader:
 
                     if self.rpde_data:
                         # Map Data
-                        m = self.map_rpde_data()
+                        m = self.map_rpde_data(url=lasturl)
                         # No records mapped so move on to next url
                         if m == 0:
                             continue
@@ -154,6 +152,7 @@ class Loader:
             kind, record = openactive_item_mapper(item=r,
                                                   mappings=self.mappings,
                                                   org=self.org,
+                                                  url=kwargs.get('url'),
                                                   license=self.license)
             if kind:
                 self.mapped_records[kind].append(record)

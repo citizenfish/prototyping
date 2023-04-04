@@ -6,6 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.html import strip_tags
 
+
 class Parameter(models.Model):
     name = models.CharField('Parameter Name', max_length=50, unique=True)
     value = models.TextField('Parameter Value', null=True)
@@ -192,7 +193,6 @@ class CoreOpenactiveTable(models.Model):
         return self.title
 
 
-
 class Course(CoreOpenactiveTable):
     class Meta:
         db_table = 'course'
@@ -209,7 +209,6 @@ class Event(CoreOpenactiveTable):
     class Meta:
         db_table = 'event'
         unique_together = [['oa_org', 'oa_id']]
-
 
 class FacilityUse(CoreOpenactiveTable):
     class Meta:
@@ -265,12 +264,13 @@ class Rule(models.Model):
     RULE_TYPE_CHOICES = (
         ('title_regex', 'Regular Expression (Title)'),
         ('desc_regex', 'Regular Expression (Description)'),
-        ('tag', 'Tag')
+        ('tag', 'Tag'),
+        ('m_name', 'Model Name')
     )
 
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     systemtagfield_value = models.CharField(max_length=50)
-    sourcetagfield_values = models.JSONField(blank=True,null=True)
+    sourcetagfield_values = models.JSONField(blank=True, null=True)
     regex_search = models.TextField('Regex to find', null=True)
     rule_type = models.CharField(max_length=15, choices=RULE_TYPE_CHOICES, default='tag')
 
@@ -280,11 +280,15 @@ Classify items using the rules in the Rule model, can be called with rules from 
 This code will set systemtags if a rule match is found and/or set the category for an item
 """
 
+
 def apply_rules(item, sender, rules=None):
     saveitem = True if not rules else False
     rules = rules if rules else Rule.objects.all()
     changed = False
     item.systemtags = item.systemtags if item.systemtags else []
+
+    # Get the name of the model
+    m_name = item.__class__.__name__
 
     for rule in rules:
         matching_tags = []
@@ -299,6 +303,9 @@ def apply_rules(item, sender, rules=None):
 
         if rule.rule_type == 'desc_regex':
             match = bool(re.search(rule.regex_search, item.description, re.IGNORECASE))
+
+        if rule.rule_type == 'm_name':
+            match = bool(re.search(rule.regex_search, m_name, re.IGNORECASE))
 
         if len(matching_tags) > 0 or match:
             changed = True
@@ -319,5 +326,41 @@ def apply_rules(item, sender, rules=None):
 
 # TODO add for other models
 @receiver(post_save, sender=Event)
+def apply_rules_on_item_creation(sender, instance, created, **kwargs):
+    apply_rules(instance, sender)
+
+@receiver(post_save, sender=Course)
+def apply_rules_on_item_creation(sender, instance, created, **kwargs):
+    apply_rules(instance, sender)
+
+@receiver(post_save, sender=CourseInstance)
+def apply_rules_on_item_creation(sender, instance, created, **kwargs):
+    apply_rules(instance, sender)
+
+@receiver(post_save, sender=FacilityUse)
+def apply_rules_on_item_creation(sender, instance, created, **kwargs):
+    apply_rules(instance, sender)
+
+@receiver(post_save, sender=IndividualFacilityUse)
+def apply_rules_on_item_creation(sender, instance, created, **kwargs):
+    apply_rules(instance, sender)
+
+@receiver(post_save, sender=OnDemandEvent)
+def apply_rules_on_item_creation(sender, instance, created, **kwargs):
+    apply_rules(instance, sender)
+
+@receiver(post_save, sender=League)
+def apply_rules_on_item_creation(sender, instance, created, **kwargs):
+    apply_rules(instance, sender)
+
+@receiver(post_save, sender=Session)
+def apply_rules_on_item_creation(sender, instance, created, **kwargs):
+    apply_rules(instance, sender)
+
+@receiver(post_save, sender=SessionSeries)
+def apply_rules_on_item_creation(sender, instance, created, **kwargs):
+    apply_rules(instance, sender)
+
+@receiver(post_save, sender=ScheduledSession)
 def apply_rules_on_item_creation(sender, instance, created, **kwargs):
     apply_rules(instance, sender)

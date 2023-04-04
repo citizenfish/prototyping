@@ -8,10 +8,13 @@ from functools import reduce
 def kinds_count(kinds_dict):
     return sum(len(values) for values in kinds_dict.values())
 
+
 def openactive_item_mapper(**kwargs):
     r = kwargs.get('item')
     mappings = kwargs.get('mappings')
+    # These are both used in f strings so do not remove
     org = kwargs.get('org')
+    license = kwargs.get('license', 'Not found')
     kind = r.get('kind', 'errors')
     record = {}
 
@@ -45,6 +48,8 @@ def openactive_item_mapper(**kwargs):
 
             # Enter json packet stored for debug
             if key == 'rawdata' and value == '*':
+                # Add the url we got this data from if passed in
+                r['sourceurl'] = kwargs.get('url', '')
                 record[key] = r
                 continue
 

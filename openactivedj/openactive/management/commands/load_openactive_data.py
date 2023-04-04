@@ -101,8 +101,7 @@ class Command(BaseCommand):
         # Main processing loop running in a multithreading environment to speed things up
         with ThreadPoolExecutor(max_workers=options['threads']) as executor:
             futures = [executor.submit(self.process_url, org=org, types=types, ignore_lasturl=self.ignore_lasturl,
-                                       timezone=options['timezone']) for
-                       org in self.providers]
+                                       timezone=options['timezone']) for org in self.providers]
 
         # Capture results of each thread and update the org records
         for future in as_completed(futures):
